@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <signal.h>
+#include <syslog.h>
 
 #include "parser.h"
 #include "banner.h"
@@ -26,6 +27,7 @@ void sighandler(int sig) {
 		case SIGINT:
 		case SIGTERM:
 			printf("\n[+] Closing...\n");
+			syslog(LOG_INFO, "Closing: flusing tables...");
 			ssh_unban(sys.candidate);
 			
 			execute("iptables -F " SSHBAN_CHAIN, EXECUTE_NO_SILENT);
@@ -63,6 +65,10 @@ int main(int argc, char *argv[]) {
 		perror("[-] inotify_add_watch");
 		return 1;
 	}
+	
+	/* Init syslog */
+	openlog("sshbanner", LOG_PID | LOG_NOWAIT, LOG_DAEMON);
+	syslog(LOG_INFO, "Initializing...");
 	
 	/* Opening log file */
 	if((log = open(argv[1], O_RDONLY)) == -1) {
@@ -125,6 +131,8 @@ int main(int argc, char *argv[]) {
 	inotify_rm_watch(fd, wd);
 	close(fd);
 	close(log);
+	
+	closelog();
 
 	return 0;
 }

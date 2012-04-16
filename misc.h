@@ -7,6 +7,7 @@
 	int signal_intercept(int signal, void (*function)(int));
 	
 	uint32_t ip_from_string(char *line);
+	char *ip_from_int(uint32_t ip, char *buffer);
 	
 	int month_from_name(char *name);
 	time_t syslog_ng_timestamp(char *timestamp);

@@ -4,6 +4,7 @@
 #include <time.h>
 #include <stdint.h>
 #include <ctype.h>
+#include <syslog.h>
 #include "banner.h"
 #include "handle_ssh.h"
 #include "candidate_stack.h"
@@ -54,6 +55,7 @@ int ssh_handle(char *line, time_t timestamp) {
 	ip_explode_t explode;
 	char buffer[128];
 	unsigned int i;
+	int score = 1;
 	
 	printf("[+] SSH: <%s>\n", line);
 	
@@ -78,6 +80,7 @@ int ssh_handle(char *line, time_t timestamp) {
 	if(!strncmp(line, "Invalid user", 12)) {
 		ip = ip_from_string(strstr(line, "from") + 5);
 		printf("[+] SSH: User request failed (%u)\n", ip);
+		score = 2;
 	}
 	
 	/* Checking match */
@@ -109,7 +112,7 @@ int ssh_handle(char *line, time_t timestamp) {
 	} else printf("[+] Client already known\n");
 	
 	/* Parsing Client */
-	temp->nbrequest++;
+	temp->nbrequest += score;
 	temp->last = timestamp;
 	
 	/* Reset after long time */
@@ -122,7 +125,10 @@ int ssh_handle(char *line, time_t timestamp) {
 		return 0;
 	}
 	
-	if(temp->last < temp->first + LONG_MAX_REQUEST_DELAY && temp->nbrequest > LONG_MAX_REQUEST_COUNT) {
+	if((temp->last < temp->first + LONG_MAX_REQUEST_DELAY && temp->nbrequest > LONG_MAX_REQUEST_COUNT) ||
+	   (temp->last < temp->first + SHORT_MAX_REQUEST_DELAY && temp->nbrequest > SHORT_MAX_REQUEST_COUNT)) {
+		   
+		syslog(LOG_INFO, "Remote %s: %d request on %d seconds. Banned.", ip_from_int(ip, buffer), temp->nbrequest, (unsigned int) (temp->last - temp->first));
 		printf("[!] Banner: %d request on %d seconds -> Banning remote !\n", temp->nbrequest, (unsigned int) (temp->last - temp->first));
 		
 		if(temp->banned) {

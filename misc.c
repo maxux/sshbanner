@@ -84,6 +84,19 @@ uint32_t ip_from_string(char *line) {
 	return value;
 }
 
+char *ip_from_int(uint32_t ip, char *buffer) {
+	ip_explode_t explode;
+	
+	explode.c4 = ip & 0xFF;
+	explode.c3 = (ip >> 8) & 0xFF;
+	explode.c2 = (ip >> 16) & 0xFF;
+	explode.c1 = (ip >> 24) & 0xFF;
+	
+	sprintf(buffer, "%u.%u.%u.%u", explode.c1, explode.c2, explode.c3, explode.c4);
+	
+	return buffer;
+}
+
 int month_from_name(char *name) {
 	// Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec
 	
