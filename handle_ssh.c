@@ -57,6 +57,11 @@ int ssh_handle(char *line, time_t timestamp) {
 	unsigned int i;
 	int score = 1;
 	
+	if(!line) {
+		printf("[-] SSH: Empty parsing line, skipping...\n");
+		return 1;
+	}
+	
 	printf("[+] SSH: <%s>\n", line);
 	
 	/* Checking some message format */
