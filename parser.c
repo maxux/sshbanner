@@ -3,13 +3,14 @@
 #include <string.h>
 #include <time.h>
 #include <stdint.h>
-#include "banner.h"
+#include "fwlban.h"
+#include "modules.h"
 #include "parser.h"
 #include "handle_ssh.h"
+#include "handle_lighttpd.h"
 #include "misc.h"
 
 extern char verbose;
-extern system_t sys;
 
 int word_length(char *str) {
 	int i = 0;
@@ -39,9 +40,8 @@ char * syslog_ng_remove_header(char *line) {
 	return (*line) ? line + 2 : NULL;
 }
 
-int log_parse(char *line) {
-	char *daemon;
-	char *log;
+int log_parse(char *line, module_t *modules) {
+	char *daemon, *log;
 	short hostsize;
 	short daemonsize, truedaemonsize;
 	time_t timestamp;
@@ -62,20 +62,22 @@ int log_parse(char *line) {
 	daemon[daemonsize] = '\0';
 	
 	/* printf("Daemon: %s\n", daemon); */
-	
-	/* Check for sshd */
-	if(strcmp(daemon, "sshd")) {
-		free(daemon);
-		return 1;
-	}
-	
-	/* Formating date */
 	timestamp = syslog_ng_timestamp(line);
+	log = syslog_ng_remove_header(line);
 	
-	/* Parsing sshd line */
-	/* printf("It's SSH ! -> %d\n", timestamp); */
-	
-	ssh_handle(syslog_ng_remove_header(line), timestamp);
-	
-	return 0;
+	while(modules) {
+		/* Checking daemon name */
+		if(!strcmp(daemon, modules->name)) {
+			/* Callback handler */
+			modules->handle(log, timestamp, modules);
+			free(daemon);
+			
+			return 0;
+		}
+		
+		modules = modules->next;
+	}
+		
+	free(daemon);
+	return 1;
 }

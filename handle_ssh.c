@@ -5,56 +5,17 @@
 #include <stdint.h>
 #include <ctype.h>
 #include <syslog.h>
-#include "banner.h"
+#include "fwlban.h"
+#include "modules.h"
 #include "handle_ssh.h"
+#include "banner.h"
 #include "candidate_stack.h"
 #include "misc.h"
 
-extern system_t sys;
-
-char *ssh_rulz_append[] = {
-	"iptables -A INPUT -s %u.%u.%u.%u -j " SSHBAN_CHAIN,
-	"iptables -A FORWARD -s %u.%u.%u.%u -j " SSHBAN_CHAIN
-};
-
-char *ssh_rulz_delete[] = {
-	"iptables -D INPUT -s %u.%u.%u.%u -j " SSHBAN_CHAIN,
-	"iptables -D FORWARD -s %u.%u.%u.%u -j " SSHBAN_CHAIN
-};
-
-void ssh_unban(remote_t *remote) {
-	unsigned int i;
-	char buffer[256];
-	ip_explode_t explode;
-	
-	/* Removing banned remote */
-	while(remote) {
-		/* Client banned */
-		if(remote->banned) {
-			explode.c4 = remote->ip & 0xFF;
-			explode.c3 = (remote->ip >> 8) & 0xFF;
-			explode.c2 = (remote->ip >> 16) & 0xFF;
-			explode.c1 = (remote->ip >> 24) & 0xFF;
-			
-			printf("[+] Banner: unban <%u-%u-%u-%u>\n", explode.c1, explode.c2, explode.c3, explode.c4);
-			
-			/* Removing from iptables */
-			for(i = 0; i < sizeof(ssh_rulz_delete) / sizeof(char*); i++) {
-				sprintf(buffer, ssh_rulz_delete[i], explode.c1, explode.c2, explode.c3, explode.c4);
-				execute(buffer, EXECUTE_NO_SILENT);
-			}
-		}
-		
-		remote = remote->next;
-	}
-}
-
-int ssh_handle(char *line, time_t timestamp) {
+int ssh_handle(char *line, time_t timestamp, module_t *module) {
 	remote_t *temp;
 	uint32_t ip = 0;
-	ip_explode_t explode;
-	char buffer[128];
-	unsigned int i;
+	char *test;	
 	int score = 1;
 	
 	if(!line) {
@@ -66,24 +27,44 @@ int ssh_handle(char *line, time_t timestamp) {
 	
 	/* Checking some message format */
 	if(!strncmp(line, "SSH: Server;Ltype: Version;Remote:", 34)) {
+		if(strlen(line) < 35) {
+			fprintf(stderr, "Malformed line\n");
+			return 1;
+		}
+		
 		ip = ip_from_string(line + 35);
 		printf("[+] SSH: Pre-auth request (%u)\n", ip);
 		
 	} else
 	
 	if(!strncmp(line, "SSH: Server;Ltype: Kex", 22)) {
-		ip = ip_from_string(line + 31);
+		if(strlen(line) < 31) {
+			fprintf(stderr, "Malformed line\n");
+			return 1;
+		}
+
+		ip = ip_from_string(line + 31);		
 		printf("[+] SSH: Pre-auth request (%u)\n", ip);
 	} else
 	
 	if(!strncmp(line, "pam_unix(sshd:auth): authentication failure;", 44)) {
-		ip = ip_from_string(strstr(line, "rhost=") + 6);
+		if(!(test = strstr(line, "rhost="))) {
+			fprintf(stderr, "Malformed line\n");
+			return 1;
+		}
+		
+		ip = ip_from_string(test + 6);
 		printf("[+] SSH: Authentification failed (%u)\n", ip);
 		
 	} else
 	
 	if(!strncmp(line, "Invalid user", 12)) {
-		ip = ip_from_string(strstr(line, "from") + 5);
+		if(!(test = strstr(line, "from"))) {
+			fprintf(stderr, "Malformed line\n");
+			return 1;
+		}
+		
+		ip = ip_from_string(test + 5);
 		printf("[+] SSH: User request failed (%u)\n", ip);
 		score = 2;
 	}
@@ -95,7 +76,7 @@ int ssh_handle(char *line, time_t timestamp) {
 	}
 	
 	/* Updating Request List */
-	temp = stack_search(ip);
+	temp = stack_search(module->candidate, ip);
 	if(!temp) {
 		printf("[ ] Stack: New Client\n");
 		
@@ -109,12 +90,12 @@ int ssh_handle(char *line, time_t timestamp) {
 		temp->nbrequest	= 0;
 		temp->banned	= 0;
 		
-		if(!stack_remote(temp)) {
-			fprintf(stderr, "[-] cannot stack remote\n");
+		if(!stack_remote(&module->candidate, temp)) {
+			fprintf(stderr, "[-] Stack: Cannot stack remote\n");
 			return 2;
 		}
 		
-	} else printf("[+] Client already known\n");
+	} else printf("[+] Banner: Client already known\n");
 	
 	/* Parsing Client */
 	temp->nbrequest += score;
@@ -130,33 +111,28 @@ int ssh_handle(char *line, time_t timestamp) {
 		return 0;
 	}
 	
-	if((temp->last < temp->first + LONG_MAX_REQUEST_DELAY && temp->nbrequest > LONG_MAX_REQUEST_COUNT) ||
-	   (temp->last < temp->first + SHORT_MAX_REQUEST_DELAY && temp->nbrequest > SHORT_MAX_REQUEST_COUNT)) {
-		   
-		syslog(LOG_INFO, "Remote %s: %d request on %d seconds. Banned.", ip_from_int(ip, buffer), temp->nbrequest, (unsigned int) (temp->last - temp->first));
-		printf("[!] Banner: %d request on %d seconds -> Banning remote !\n", temp->nbrequest, (unsigned int) (temp->last - temp->first));
-		
-		if(temp->banned) {
-			printf("[-] Banner: WTF, client is theoretically already ban !\n");
-			return 3;
-		}
-		
-		temp->banned = 1;
-		
-		explode.c4 = ip & 0xFF;
-		explode.c3 = (ip >> 8) & 0xFF;
-		explode.c2 = (ip >> 16) & 0xFF;
-		explode.c1 = (ip >> 24) & 0xFF;
-		
-		for(i = 0; i < sizeof(ssh_rulz_append) / sizeof(char*); i++) {
-			sprintf(buffer, ssh_rulz_append[i], explode.c1, explode.c2, explode.c3, explode.c4);
-			printf("[!] Banner: %s\n", buffer);
-			
-			execute(buffer, EXECUTE_NO_SILENT);
-		}
+	if(module_check_remote(temp, module)) {
+		/* Apply ban */
+		fwlban_ban(temp, module);
 	}
 	
-	stack_dump(sys.candidate);
+	stack_dump(module->candidate);
 	
 	return 0;
+}
+
+void __module_ssh_init() {
+	module_t *module;
+	
+	module = module_create("sshd", ssh_handle);
+	
+	module_rules_add(module, BAN_RULE, "iptables -A INPUT -s __IP__ -j __CHAIN__");
+	module_rules_add(module, BAN_RULE, "iptables -A FORWARD -s __IP__ -j __CHAIN__");
+	
+	module_rules_add(module, UNBAN_RULE, "iptables -D INPUT -s __IP__ -j __CHAIN__");
+	module_rules_add(module, UNBAN_RULE, "iptables -D FORWARD -s __IP__ -j __CHAIN__");
+	
+	module_set_limits(module, 15, 20, 40, 80);
+	
+	module_register(module);
 }

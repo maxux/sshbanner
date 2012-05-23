@@ -4,22 +4,20 @@
 #include <unistd.h>
 #include <time.h>
 #include <stdint.h>
-#include "banner.h"
+#include "fwlban.h"
 #include "candidate_stack.h"
 
-extern system_t sys;
-
-remote_t * stack_remote(remote_t *new) {
-	new->next = sys.candidate;
-	sys.candidate = new;
+remote_t * stack_remote(remote_t **root, remote_t *new) {
+	new->next = *root;
+	*root = new;
 	
 	return new;
 }
 
-remote_t * stack_search(uint32_t ip) {
+remote_t * stack_search(remote_t *root, uint32_t ip) {
 	remote_t *temp;
 	
-	temp = sys.candidate;
+	temp = root;
 	while(temp && temp->ip != ip)
 		temp = temp->next;
 		
@@ -27,14 +25,8 @@ remote_t * stack_search(uint32_t ip) {
 }
 
 void stack_dump(remote_t *head) {
-	remote_t *temp = head;
-	
-	while(temp) {
-		printf("[ ] IP    : %u\n", temp->ip);
-		printf("[ ] First : %u\n", (unsigned int) temp->first);
-		printf("[ ] Last  : %u\n", (unsigned int) temp->last);
-		printf("[ ] Hits  : %d\n", temp->nbrequest);
-		
-		temp = temp->next;
+	while(head) {
+		printf("[ ] Stack: IP/First/Last/Hits: %u / %u / %u / %d\n", head->ip, (unsigned int) head->first, (unsigned int) head->last, head->nbrequest);
+		head = head->next;
 	}
 }

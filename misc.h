@@ -12,6 +12,8 @@
 	int month_from_name(char *name);
 	time_t syslog_ng_timestamp(char *timestamp);
 	
+	ip_explode_t ip_split_from_int(uint32_t ip);
+	
 	#define EXECUTE_SILENT		1
 	#define EXECUTE_NO_SILENT	2
 #endif

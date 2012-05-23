@@ -4,7 +4,7 @@
 #include <signal.h>
 #include <time.h>
 #include <stdint.h>
-#include "banner.h"
+#include "fwlban.h"
 #include "misc.h"
 
 void diep(char *str) {
@@ -16,6 +16,8 @@ int execute(char *cmd, int flag) {
 	FILE *fp;
 	char buffer[512], *truecmd;
 	int line = 0;
+	
+	printf("[ ] Execute: %s\n", cmd);
 	
 	truecmd = (char*) malloc(sizeof(char) * strlen(cmd) + 6);
 	strcpy(truecmd, cmd);
@@ -87,14 +89,21 @@ uint32_t ip_from_string(char *line) {
 char *ip_from_int(uint32_t ip, char *buffer) {
 	ip_explode_t explode;
 	
+	explode = ip_split_from_int(ip);	
+	sprintf(buffer, "%u.%u.%u.%u", explode.c1, explode.c2, explode.c3, explode.c4);
+	
+	return buffer;
+}
+
+ip_explode_t ip_split_from_int(uint32_t ip) {
+	ip_explode_t explode;
+	
 	explode.c4 = ip & 0xFF;
 	explode.c3 = (ip >> 8) & 0xFF;
 	explode.c2 = (ip >> 16) & 0xFF;
 	explode.c1 = (ip >> 24) & 0xFF;
 	
-	sprintf(buffer, "%u.%u.%u.%u", explode.c1, explode.c2, explode.c3, explode.c4);
-	
-	return buffer;
+	return explode;
 }
 
 int month_from_name(char *name) {
