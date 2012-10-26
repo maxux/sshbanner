@@ -47,6 +47,16 @@ int ssh_handle(char *line, time_t timestamp, module_t *module) {
 		printf("[+] SSH: Pre-auth request (%u)\n", ip);
 	} else
 	
+	if(!strncmp(line, "SSH: Server;Ltype: Authname", 27)) {
+		if(strlen(line) < 36) {
+			fprintf(stderr, "Malformed line\n");
+			return 1;
+		}
+
+		ip = ip_from_string(line + 36);
+		printf("[+] SSH: Pre-auth request (%u)\n", ip);
+	} else
+	
 	if(!strncmp(line, "pam_unix(sshd:auth): authentication failure;", 44)) {
 		if(!(test = strstr(line, "rhost="))) {
 			fprintf(stderr, "Malformed line\n");
@@ -66,7 +76,7 @@ int ssh_handle(char *line, time_t timestamp, module_t *module) {
 		
 		ip = ip_from_string(test + 5);
 		printf("[+] SSH: User request failed (%u)\n", ip);
-		score = 2;
+		score = 3;
 	}
 	
 	/* Checking match */
@@ -95,7 +105,7 @@ int ssh_handle(char *line, time_t timestamp, module_t *module) {
 			return 2;
 		}
 		
-	} else printf("[+] Banner: Client already known\n");
+	} else printf("[+] Banner: Client already known: score: %u, last: %u\n", temp->nbrequest, temp->last);
 	
 	/* Parsing Client */
 	temp->nbrequest += score;
@@ -132,7 +142,7 @@ void __module_ssh_init() {
 	module_rules_add(module, UNBAN_RULE, "iptables -D INPUT -s __IP__ -j __CHAIN__");
 	module_rules_add(module, UNBAN_RULE, "iptables -D FORWARD -s __IP__ -j __CHAIN__");
 	
-	module_set_limits(module, 15, 20, 40, 80);
+	module_set_limits(module, 10, 15, 20, 60);
 	
 	module_register(module);
 }
