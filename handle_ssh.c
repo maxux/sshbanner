@@ -105,7 +105,7 @@ int ssh_handle(char *line, time_t timestamp, module_t *module) {
 			return 2;
 		}
 		
-	} else printf("[+] Banner: Client already known: score: %u, last: %u\n", temp->nbrequest, temp->last);
+	} else printf("[+] Banner: Client already known: score: %zu, last: %zu\n", temp->nbrequest, temp->last);
 	
 	/* Parsing Client */
 	temp->nbrequest += score;

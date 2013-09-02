@@ -43,7 +43,7 @@ char * syslog_ng_remove_header(char *line) {
 int log_parse(char *line, module_t *modules) {
 	char *daemon, *log;
 	short hostsize;
-	short daemonsize, truedaemonsize;
+	short daemonsize; //, truedaemonsize;
 	time_t timestamp;
 	
 	/* printf("Raw: <%s>\n", line); */
@@ -53,7 +53,7 @@ int log_parse(char *line, module_t *modules) {
 	hostsize = word_length(log);
 	
 	/* Reading daemon name */
-	truedaemonsize	= word_length(log + hostsize + 1);
+	// truedaemonsize	= word_length(log + hostsize + 1);
 	daemonsize	= word_length_wopid(log + hostsize + 1);
 	
 	daemon = (char*) malloc(sizeof(char) * daemonsize + 1);

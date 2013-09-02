@@ -13,7 +13,9 @@
 #include "misc.h"
 
 int lighttpd_handle(char *line, time_t timestamp, module_t *module) {
-	
+	(void) line;
+	(void) timestamp;
+	(void) module;
 	return 0;
 }
 

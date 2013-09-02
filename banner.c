@@ -13,8 +13,15 @@ int fwlban_ban(remote_t *remote, module_t *module) {
 	ip_explode_t explode;
 	module_rule_list_t *rules;
 	
-	syslog(LOG_INFO, "Remote %s: %d request on %d seconds. Banned.", ip_from_int(remote->ip, buffer), remote->nbrequest, (unsigned int) (remote->last - remote->first));
-	printf("[!] Banner: %d request on %d seconds -> Banning remote !\n", remote->nbrequest, (unsigned int) (remote->last - remote->first));
+	syslog(LOG_INFO,
+	       "Remote %s: %zu request on %u seconds. Banned.",
+	       ip_from_int(remote->ip, buffer),
+	       remote->nbrequest,
+	       (unsigned int) (remote->last - remote->first)
+	);
+	
+	printf("[!] Banner: %zu request on %u seconds -> Banning remote !\n",
+	       remote->nbrequest, (unsigned int) (remote->last - remote->first));
 	
 	if(remote->banned) {
 		fprintf(stderr, "[-] Banner: WTF, client is theorically already ban !\n");

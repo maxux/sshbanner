@@ -47,7 +47,7 @@ int module_chain_init(module_t *modules) {
 	return 0;
 }
 
-module_t * module_create(const char *name, int (*handle)(char *, time_t, module_t *)) {
+module_t *module_create(const char *name, int (*handle)(char *, time_t, module_t *)) {
 	module_t *module;
 	
 	module = (module_t*) malloc(sizeof(module_t));
@@ -144,7 +144,7 @@ size_t module_rules_count(module_rule_list_t *list) {
 	return length;
 }
 
-module_t * module_register(module_t *module) {
+module_t *module_register(module_t *module) {
 	size_t ban = 0, unban = 0;
 	
 	ban   = module_rules_count(module->ban_rules);
@@ -156,7 +156,7 @@ module_t * module_register(module_t *module) {
 	if(!module->long_maxreq_count || !module->long_maxreq_delay)
 		printf("[W] Module: warning: %s: long values not set\n", module->name);
 	
-	printf("[+] Module: registered: %s, %u ban rules, %u unban rules\n", module->name, ban, unban);
+	printf("[+] Module: registered: %s, %zu ban rules, %zu unban rules\n", module->name, ban, unban);
 	
 	/* Appending module */
 	module->next = global.modules;
@@ -166,6 +166,13 @@ module_t * module_register(module_t *module) {
 }
 
 int module_check_remote(remote_t *remote, module_t *module) {
+	uint32_t exception = ip_from_string("192.168.10.0");
+	
+	if((remote->ip & exception) == exception) {
+		printf("[-] ip on exception list\n");
+		return 0;
+	}
+	
 	return (
 		(
 			(size_t) remote->last < (size_t) remote->first + module->long_maxreq_delay &&
