@@ -126,7 +126,7 @@ int ssh_handle(char *line, time_t timestamp, module_t *module) {
 		fwlban_ban(temp, module);
 	}
 	
-	stack_dump(module->candidate);
+	// stack_dump(module->candidate);
 	
 	return 0;
 }
