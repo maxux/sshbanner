@@ -78,7 +78,7 @@ uint32_t ip_from_string(char *line) {
 		return 0;
 	}
 	
-	printf("[+] IP Parser: <%d-%d-%d-%d>\n", ip.c1, ip.c2, ip.c3, ip.c4);
+	// printf("[+] IP Parser: <%d-%d-%d-%d>\n", ip.c1, ip.c2, ip.c3, ip.c4);
 	
 	/* Building IP integer */
 	value = ip.c4 + ip.c3 * 256 + ip.c2 * 256 * 256 + ip.c1 * 256 * 256 * 256;

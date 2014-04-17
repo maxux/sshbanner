@@ -166,11 +166,21 @@ module_t *module_register(module_t *module) {
 }
 
 int module_check_remote(remote_t *remote, module_t *module) {
-	uint32_t exception = ip_from_string("192.168.10.0");
+	//
+	// FIXME FIXME FIXME
+	//
+	int i;
+	char buffer[64];
+	uint32_t exception;
 	
-	if((remote->ip & exception) == exception) {
-		printf("[-] ip on exception list\n");
-		return 0;
+	for(i = 0; i < 256; i++) {
+		sprintf(buffer, "192.168.10.%d", i);
+		exception = ip_from_string(buffer);
+		
+		if(remote->ip == exception) {
+			printf("[-] ip on exception list\n");
+			return 0;
+		}
 	}
 	
 	return (

@@ -57,6 +57,17 @@ int ssh_handle(char *line, time_t timestamp, module_t *module) {
 		printf("[+] SSH: Pre-auth request (%u)\n", ip);
 	} else
 	
+	if(!strncmp(line, "Failed keyboard-interactive/pam", 31)) {
+		if(!(test = strstr(line, "from"))) {
+			fprintf(stderr, "Malformed line\n");
+			return 1;
+		}
+
+		printf("<%s>\n", test + 5);
+		ip = ip_from_string(test + 5);
+		printf("[+] SSH: pam (%u)\n", ip);
+	} else
+	
 	if(!strncmp(line, "pam_unix(sshd:auth): authentication failure;", 44)) {
 		if(!(test = strstr(line, "rhost="))) {
 			fprintf(stderr, "Malformed line\n");
